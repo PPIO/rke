@@ -655,7 +655,11 @@ func (c *Cluster) BuildProxyProcess(host *hosts.Host) v3.Process {
 	Command := c.getNginxEntryPoint(host.OS())
 	nginxProxyEnv := ""
 	for i, host := range c.ControlPlaneHosts {
-		nginxProxyEnv += fmt.Sprintf("%s", host.InternalAddress)
+		address := host.InternalAddress
+		if host.Address != host.InternalAddress {
+			address = host.Address
+		}
+		nginxProxyEnv += fmt.Sprintf("%s", address)
 		if i < (len(c.ControlPlaneHosts) - 1) {
 			nginxProxyEnv += ","
 		}
