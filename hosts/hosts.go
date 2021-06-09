@@ -24,6 +24,7 @@ type Host struct {
 	DClient             *client.Client
 	LocalConnPort       int
 	IsControl           bool
+	IsEdge              bool
 	IsWorker            bool
 	IsEtcd              bool
 	IgnoreDockerVersion bool
