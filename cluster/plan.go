@@ -103,6 +103,7 @@ func BuildRKEConfigNodePlan(ctx context.Context, myCluster *Cluster, host *hosts
 	// Everybody gets a sidecar and a kubelet..
 	processes[services.SidekickContainerName] = myCluster.BuildSidecarProcess(host)
 	processes[services.KubeletContainerName] = myCluster.BuildKubeletProcess(host, svcOptions)
+	processes[services.KubeproxyContainerName] = myCluster.BuildKubeProxyProcess(host, svcOptions)
 
 	portChecks = append(portChecks, BuildPortChecksFromPortList(host, WorkerPortList, ProtocolTCP)...)
 	// Do we need an nginxProxy for this one ?
@@ -113,7 +114,6 @@ func BuildRKEConfigNodePlan(ctx context.Context, myCluster *Cluster, host *hosts
 		processes[services.KubeAPIContainerName] = myCluster.BuildKubeAPIProcess(host, svcOptions)
 		processes[services.KubeControllerContainerName] = myCluster.BuildKubeControllerProcess(host, svcOptions)
 		processes[services.SchedulerContainerName] = myCluster.BuildSchedulerProcess(host, svcOptions)
-		processes[services.KubeproxyContainerName] = myCluster.BuildKubeProxyProcess(host, svcOptions)
 
 		portChecks = append(portChecks, BuildPortChecksFromPortList(host, ControlPlanePortList, ProtocolTCP)...)
 	}

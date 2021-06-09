@@ -247,10 +247,8 @@ func RemoveWorkerPlane(ctx context.Context, workerHosts []*hosts.Host, force boo
 				if err := removeKubelet(ctx, runHost); err != nil {
 					errList = append(errList, err)
 				}
-				if runHost.IsControl {
-					if err := removeKubeproxy(ctx, runHost); err != nil {
-						errList = append(errList, err)
-					}
+				if err := removeKubeproxy(ctx, runHost); err != nil {
+					errList = append(errList, err)
 				}
 				if err := removeNginxProxy(ctx, runHost); err != nil {
 					errList = append(errList, err)
@@ -284,10 +282,8 @@ func RestartWorkerPlane(ctx context.Context, workerHosts []*hosts.Host) error {
 				if err := RestartKubelet(ctx, runHost); err != nil {
 					errList = append(errList, err)
 				}
-				if runHost.IsControl {
-					if err := RestartKubeproxy(ctx, runHost); err != nil {
-						errList = append(errList, err)
-					}
+				if err := RestartKubeproxy(ctx, runHost); err != nil {
+					errList = append(errList, err)
 				}
 				if err := RestartNginxProxy(ctx, runHost); err != nil {
 					errList = append(errList, err)
@@ -313,11 +309,6 @@ func doDeployWorkerPlane(ctx context.Context, host *hosts.Host,
 			return err
 		}
 	}
-	if host.IsControl {
-		if err := runKubeproxy(ctx, host, localConnDialerFactory, prsMap, processMap[KubeproxyContainerName], alpineImage); err != nil {
-			return err
-		}
-	}
 	// run sidekick
 	if err := runSidekick(ctx, host, prsMap, processMap[SidekickContainerName]); err != nil {
 		return err
@@ -326,7 +317,7 @@ func doDeployWorkerPlane(ctx context.Context, host *hosts.Host,
 	if err := runKubelet(ctx, host, localConnDialerFactory, prsMap, processMap[KubeletContainerName], certMap, alpineImage); err != nil {
 		return err
 	}
-	return nil
+	return runKubeproxy(ctx, host, localConnDialerFactory, prsMap, processMap[KubeproxyContainerName], alpineImage)
 }
 
 func isWorkerHostUpgradable(ctx context.Context, host *hosts.Host, processMap map[string]v3.Process) (bool, error) {
@@ -340,10 +331,6 @@ func isWorkerHostUpgradable(ctx context.Context, host *hosts.Host, processMap ma
 					// nginxProxy should not exist on control hosts, so no changes needed
 					continue
 				}
-				if service == KubeproxyContainerName && !host.IsControl {
-					continue
-				}
-
 				// doDeployWorkerPlane should be called so this container gets recreated
 				logrus.Debugf("[%s] Host %v is upgradable because %v needs to run", WorkerRole, host.HostnameOverride, service)
 				return true, nil
