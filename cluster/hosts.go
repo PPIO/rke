@@ -22,6 +22,7 @@ const (
 	etcdRoleLabel         = "node-role.kubernetes.io/etcd"
 	controlplaneRoleLabel = "node-role.kubernetes.io/controlplane"
 	workerRoleLabel       = "node-role.kubernetes.io/worker"
+	EdgeRoleLabel         = "node-role.kubernetes.io/edge"
 	cloudConfigFileName   = "/etc/kubernetes/cloud-config"
 	authnWebhookFileName  = "/etc/kubernetes/kube-api-authn-webhook.yaml"
 )
@@ -107,6 +108,21 @@ func (c *Cluster) InvertIndexHosts() error {
 				return fmt.Errorf("Failed to recognize host [%s] role %s", host.Address, role)
 			}
 		}
+
+		if _, ok := newHost.ToAddLabels[EdgeRoleLabel]; ok {
+			if _, ok := newHost.ToAddLabels[workerRoleLabel]; !ok {
+				return fmt.Errorf("Host [%s] edge role must configured with worker", host.Address)
+			}
+			if _, ok := newHost.ToAddLabels[etcdRoleLabel]; ok {
+				return fmt.Errorf("Host [%s] edge role can't configured with etcd", host.Address)
+			}
+			if _, ok := newHost.ToAddLabels[controlplaneRoleLabel]; ok {
+				return fmt.Errorf("Host [%s] edge role can't configured with controlplane", host.Address)
+			}
+			newHost.IsEdge = true
+
+		}
+
 		if !newHost.IsEtcd {
 			newHost.ToDelLabels[etcdRoleLabel] = "true"
 		}
@@ -115,6 +131,9 @@ func (c *Cluster) InvertIndexHosts() error {
 		}
 		if !newHost.IsWorker {
 			newHost.ToDelLabels[workerRoleLabel] = "true"
+		}
+		if !newHost.IsEdge {
+			newHost.ToDelLabels[EdgeRoleLabel] = "true"
 		}
 	}
 	return nil

@@ -103,7 +103,9 @@ func BuildRKEConfigNodePlan(ctx context.Context, myCluster *Cluster, host *hosts
 	// Everybody gets a sidecar and a kubelet..
 	processes[services.SidekickContainerName] = myCluster.BuildSidecarProcess(host)
 	processes[services.KubeletContainerName] = myCluster.BuildKubeletProcess(host, svcOptions)
-	processes[services.KubeproxyContainerName] = myCluster.BuildKubeProxyProcess(host, svcOptions)
+	if !host.IsEdge {
+		processes[services.KubeproxyContainerName] = myCluster.BuildKubeProxyProcess(host, svcOptions)
+	}
 
 	portChecks = append(portChecks, BuildPortChecksFromPortList(host, WorkerPortList, ProtocolTCP)...)
 	// Do we need an nginxProxy for this one ?
@@ -656,7 +658,7 @@ func (c *Cluster) BuildProxyProcess(host *hosts.Host) v3.Process {
 	nginxProxyEnv := ""
 	for i, host := range c.ControlPlaneHosts {
 		address := host.InternalAddress
-		if host.Address != host.InternalAddress {
+		if host.IsEdge && host.Address != host.InternalAddress {
 			address = host.Address
 		}
 		nginxProxyEnv += fmt.Sprintf("%s", address)
