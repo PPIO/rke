@@ -247,8 +247,11 @@ func RemoveWorkerPlane(ctx context.Context, workerHosts []*hosts.Host, force boo
 				if err := removeKubelet(ctx, runHost); err != nil {
 					errList = append(errList, err)
 				}
-				if err := removeKubeproxy(ctx, runHost); err != nil {
-					errList = append(errList, err)
+
+				if !runHost.IsEdge {
+					if err := removeKubeproxy(ctx, runHost); err != nil {
+						errList = append(errList, err)
+					}
 				}
 				if err := removeNginxProxy(ctx, runHost); err != nil {
 					errList = append(errList, err)
@@ -282,8 +285,10 @@ func RestartWorkerPlane(ctx context.Context, workerHosts []*hosts.Host) error {
 				if err := RestartKubelet(ctx, runHost); err != nil {
 					errList = append(errList, err)
 				}
-				if err := RestartKubeproxy(ctx, runHost); err != nil {
-					errList = append(errList, err)
+				if !runHost.IsEdge {
+					if err := RestartKubeproxy(ctx, runHost); err != nil {
+						errList = append(errList, err)
+					}
 				}
 				if err := RestartNginxProxy(ctx, runHost); err != nil {
 					errList = append(errList, err)
@@ -317,7 +322,10 @@ func doDeployWorkerPlane(ctx context.Context, host *hosts.Host,
 	if err := runKubelet(ctx, host, localConnDialerFactory, prsMap, processMap[KubeletContainerName], certMap, alpineImage); err != nil {
 		return err
 	}
-	return runKubeproxy(ctx, host, localConnDialerFactory, prsMap, processMap[KubeproxyContainerName], alpineImage)
+	if !host.IsEdge {
+		return runKubeproxy(ctx, host, localConnDialerFactory, prsMap, processMap[KubeproxyContainerName], alpineImage)
+	}
+	return nil
 }
 
 func isWorkerHostUpgradable(ctx context.Context, host *hosts.Host, processMap map[string]v3.Process) (bool, error) {
@@ -329,6 +337,9 @@ func isWorkerHostUpgradable(ctx context.Context, host *hosts.Host, processMap ma
 			if client.IsErrNotFound(err) {
 				if service == NginxProxyContainerName && host.IsControl {
 					// nginxProxy should not exist on control hosts, so no changes needed
+					continue
+				}
+				if service == KubeproxyContainerName && host.IsEdge {
 					continue
 				}
 				// doDeployWorkerPlane should be called so this container gets recreated
