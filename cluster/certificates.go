@@ -132,6 +132,11 @@ func RotateRKECertificates(ctx context.Context, c *Cluster, flags ExternalFlags,
 	if c.IsKubeletGenerateServingCertificateEnabled() {
 		componentsCertsFuncMap[services.KubeletContainerName] = append(componentsCertsFuncMap[services.KubeletContainerName], pki.GenerateKubeletCertificate)
 	}
+
+	if c.IsKubeletEnableNodeAuthorization() {
+		componentsCertsFuncMap[services.KubeletContainerName] = append(componentsCertsFuncMap[services.KubeletContainerName], pki.GenerateKubeNodeStandaloneCertificate)
+	}
+
 	rotateFlags := c.RancherKubernetesEngineConfig.RotateCertificates
 	if rotateFlags.CACertificates {
 		// rotate CA cert and RequestHeader CA cert
@@ -227,6 +232,16 @@ func (c *Cluster) IsKubeletGenerateServingCertificateEnabled() bool {
 		return false
 	}
 	if c.Services.Kubelet.GenerateServingCertificate {
+		return true
+	}
+	return false
+}
+
+func (c *Cluster) IsKubeletEnableNodeAuthorization() bool {
+	if c == nil {
+		return false
+	}
+	if c.Services.Kubelet.EnableNodeAuthorization {
 		return true
 	}
 	return false

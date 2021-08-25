@@ -163,6 +163,10 @@ func GetIPHostAltnamesForHost(host *hosts.Host) *cert.AltNames {
 	}
 }
 
+func GetKubeNodeCertCNForHost(host *hosts.Host) string {
+	return fmt.Sprintf("%s:%s", KubeNodeCommonName, host.HostnameOverride)
+}
+
 func GetAltNames(cpHosts []*hosts.Host, clusterDomain string, KubernetesServiceIP net.IP, SANs []string) *cert.AltNames {
 	ips := []net.IP{}
 	dnsNames := []string{}
@@ -342,9 +346,9 @@ func getDefaultCN(name string) string {
 	return fmt.Sprintf("system:%s", name)
 }
 
-func getCertKeys(rkeNodes []v3.RKEConfigNode, nodeRole string, rkeConfig *v3.RancherKubernetesEngineConfig) []string {
+func getCertKeys(rkeNode v3.RKEConfigNode, rkeNodes []v3.RKEConfigNode, nodeRole string, rkeConfig *v3.RancherKubernetesEngineConfig) []string {
 	// static certificates each node needs
-	certList := []string{CACertName, KubeProxyCertName, KubeNodeCertName}
+	certList := []string{CACertName, KubeProxyCertName}
 	allHosts := hosts.NodesToHosts(rkeNodes, "")
 	if IsKubeletGenerateServingCertificateEnabledinConfig(rkeConfig) {
 		for _, host := range allHosts {
@@ -352,6 +356,13 @@ func getCertKeys(rkeNodes []v3.RKEConfigNode, nodeRole string, rkeConfig *v3.Ran
 			certList = append(certList, GetCrtNameForHost(host, KubeletCertName))
 		}
 	}
+
+	if IsKubeletEnableNodeAuthorization(rkeConfig) {
+		certList = append(certList, GetCrtNameForHost(&hosts.Host{RKEConfigNode: rkeNode}, KubeNodeCertName))
+	} else {
+		certList = append(certList, KubeNodeCertName)
+	}
+
 	// etcd
 	if nodeRole == etcdRole {
 		etcdHosts := hosts.NodesToHosts(rkeNodes, nodeRole)
@@ -801,6 +812,13 @@ func IsValidCertStr(c string) (bool, error) {
 
 func IsKubeletGenerateServingCertificateEnabledinConfig(rkeConfig *v3.RancherKubernetesEngineConfig) bool {
 	if rkeConfig.Services.Kubelet.GenerateServingCertificate {
+		return true
+	}
+	return false
+}
+
+func IsKubeletEnableNodeAuthorization(rkeConfig *v3.RancherKubernetesEngineConfig) bool {
+	if rkeConfig.Services.Kubelet.EnableNodeAuthorization {
 		return true
 	}
 	return false
