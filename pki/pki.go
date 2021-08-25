@@ -62,18 +62,34 @@ func GenerateRKECerts(ctx context.Context, rkeConfig v3.RancherKubernetesEngineC
 func GenerateRKENodeCerts(ctx context.Context, rkeConfig v3.RancherKubernetesEngineConfig, nodeAddress string, certBundle map[string]CertificatePKI) map[string]CertificatePKI {
 	crtMap := make(map[string]CertificatePKI)
 	crtKeys := []string{}
+
 	for _, node := range rkeConfig.Nodes {
 		if node.Address == nodeAddress {
 			for _, role := range node.Role {
-				keys := getCertKeys(rkeConfig.Nodes, role, &rkeConfig)
-				crtKeys = append(crtKeys, keys...)
+				originKeys := getCertKeys(node, rkeConfig.Nodes, role, &rkeConfig)
+				newKeys := []string{}
+
+				for _, key := range originKeys {
+					if key == KubeNodeCertName && IsKubeletEnableNodeAuthorization(&rkeConfig) {
+						nodeKey := GetCrtNameForHost(&hosts.Host{RKEConfigNode: node}, KubeNodeCertName)
+						crtMap[KubeNodeCertName] = certBundle[nodeKey]
+						log.Infof(ctx, "[certificates] overwrite kube node cert for node %s, %v", nodeKey, crtMap[KubeNodeCertName])
+					} else {
+						newKeys = append(newKeys, key)
+					}
+				}
+
+				crtKeys = append(crtKeys, newKeys...)
 			}
+
 			break
 		}
 	}
+
 	for _, key := range crtKeys {
 		crtMap[key] = certBundle[key]
 	}
+
 	return crtMap
 }
 
