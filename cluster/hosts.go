@@ -110,7 +110,6 @@ func (c *Cluster) InvertIndexHosts() error {
 		}
 
 
-		fmt.Println("pai debug ", newHost.ToAddLabels)
 		if _, ok := newHost.ToAddLabels[EdgeRoleLabel]; ok {
 			if newHost.IsControl || newHost.IsEtcd {
 				return fmt.Errorf("Host [%s] edge role can't configured with controlplane", host.Address)

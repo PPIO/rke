@@ -219,6 +219,26 @@ func GenerateKubeNodeCertificate(ctx context.Context, certs map[string]Certifica
 	return nil
 }
 
+func GenerateRestrictKubeNodeCertificate(ctx context.Context, host *hosts.Host, certs map[string]CertificatePKI, rkeConfig v3.RancherKubernetesEngineConfig) error {
+	// generate kubelet certificate
+	caCrt := certs[CACertName].Certificate
+	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
+
+	logrus.Info("[certificates] Generating Restrict Node certificate")
+	var serviceKey *rsa.PrivateKey
+	cnName := fmt.Sprintf("%s:%s", KubeNodeCommonName, host.NodeName)
+
+	nodeCrt, nodeKey, err := GenerateSignedCertAndKey(caCrt, caKey, false, cnName, nil, serviceKey, []string{KubeNodeOrganizationName})
+	if err != nil {
+		return err
+	}
+	certs[KubeNodeCertName] = ToCertObject(KubeNodeCertName, cnName, KubeNodeOrganizationName, nodeCrt, nodeKey, nil)
+	return nil
+}
+
 func GenerateKubeNodeCSR(ctx context.Context, certs map[string]CertificatePKI, rkeConfig v3.RancherKubernetesEngineConfig) error {
 	// generate kubelet csr and key
 	nodeCrt := certs[KubeNodeCertName].Certificate

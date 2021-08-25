@@ -35,6 +35,12 @@ func DeployCertificatesOnPlaneHost(
 	env []string) error {
 	crtBundle := GenerateRKENodeCerts(ctx, rkeConfig, host.Address, crtMap)
 
+	if host.IsWorker {
+		if err := GenerateRestrictKubeNodeCertificate(ctx, host, crtBundle, rkeConfig); err != nil {
+			logrus.Errorf("[certificates] Deploying restrict node cert on host [%s] fail.", host.Address)
+		}
+	}
+
 	// Strip CA key as its sensitive and unneeded on nodes without controlplane role
 	if !host.IsControl {
 		caCert := crtBundle[CACertName]
