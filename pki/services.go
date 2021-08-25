@@ -522,6 +522,37 @@ func GenerateKubeletCertificate(ctx context.Context, certs map[string]Certificat
 	return nil
 }
 
+func GenerateKubeNodeStandaloneCertificate(ctx context.Context, certs map[string]CertificatePKI, rkeConfig v3.RancherKubernetesEngineConfig, configPath, configDir string, rotate bool) error {
+	// generate kubelet certificate and key
+	caCrt := certs[CACertName].Certificate
+	caKey := certs[CACertName].Key
+	if caCrt == nil || caKey == nil {
+		return fmt.Errorf("CA Certificate or Key is empty")
+	}
+	log.Infof(ctx, "[certificates] Generating Independent Kubernetes Kubelet certificates")
+	allHosts := hosts.NodesToHosts(rkeConfig.Nodes, "")
+	for _, host := range allHosts {
+		KubeNodeStandaloneCertName := GetCrtNameForHost(host, KubeNodeCertName)
+		KubeNodeStandaloneCert := certs[KubeNodeStandaloneCertName].Certificate
+		if KubeNodeStandaloneCert != nil && !rotate {
+			continue
+		}
+		cnName := GetKubeNodeCertCNForHost(host)
+
+		var serviceKey *rsa.PrivateKey
+
+		nodeCrt, nodeKey, err := GenerateSignedCertAndKey(caCrt, caKey, false, cnName, nil, serviceKey, []string{KubeNodeOrganizationName})
+
+		if err != nil {
+			return err
+		}
+		certs[KubeNodeStandaloneCertName] = ToCertObject(KubeNodeStandaloneCertName, cnName, cnName, nodeCrt, nodeKey, nil)
+		return nil
+	}
+	deleteUnusedCerts(ctx, certs, KubeletCertName, allHosts)
+	return nil
+}
+
 func GenerateKubeletCSR(ctx context.Context, certs map[string]CertificatePKI, rkeConfig v3.RancherKubernetesEngineConfig) error {
 	allHosts := hosts.NodesToHosts(rkeConfig.Nodes, "")
 	for _, host := range allHosts {

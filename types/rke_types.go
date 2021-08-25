@@ -339,6 +339,8 @@ type KubeletService struct {
 	FailSwapOn bool `yaml:"fail_swap_on" json:"failSwapOn,omitempty"`
 	// Generate per node kubelet serving certificates created using kube-ca
 	GenerateServingCertificate bool `yaml:"generate_serving_certificate" json:"generateServingCertificate,omitempty"`
+	// Generate per node kubelet certificates to support NodeRestriction admission controller
+	EnableNodeAuthorization bool `yaml:"enable_node_authorization" json:"enableNodeAuthorization"`
 }
 
 type KubeproxyService struct {
